@@ -493,6 +493,121 @@ func TestRequestUnmarshal(t *testing.T) {
 				// empty
 			},
 		},
+		{
+			request: createRequestFromParts(http.MethodGet, "https://example.com/index.html", nil),
+			enc: []byte{
+				// Framing indicator
+				byte(unknownLengthRequestFrame),
+				// Request Control Data
+				3, 'G', 'E', 'T',
+				5, 'h', 't', 't', 'p', 's',
+				11, 'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm',
+				11, '/', 'i', 'n', 'd', 'e', 'x', '.', 'h', 't', 'm', 'l',
+				// Indeterminate-Length Field Section (Headers)
+				0, // terminator
+				// Indeterminate-Length Content
+				0, // terminator
+				// Indeterminate-Length Field Section (Trailers)
+				0, // terminator
+				// Padding
+				// empty
+			},
+		},
+		{
+			request: createRequestFromParts(http.MethodGet, "https://example.com/index.html", []byte("body")),
+			enc: []byte{
+				// Framing indicator
+				byte(unknownLengthRequestFrame),
+				// Request Control Data
+				3, 'G', 'E', 'T',
+				5, 'h', 't', 't', 'p', 's',
+				11, 'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm',
+				11, '/', 'i', 'n', 'd', 'e', 'x', '.', 'h', 't', 'm', 'l',
+				// Indeterminate-Length Field Section (Headers)
+				0, // terminator
+				// Indeterminate-Length Content
+				4, 'b', 'o', 'd', 'y',
+				0, //terminator
+				// Indeterminate-Length Field Section (Trailers)
+				0, // terminator
+				// Padding
+				// empty
+			},
+		},
+		{
+			request: createFullRequestFromParts(http.MethodGet, "https://example.com/index.html", testHeaderMap, nil, []byte("body")),
+			enc: []byte{
+				// Framing indicator
+				byte(unknownLengthRequestFrame),
+				// Request Control Data
+				3, 'G', 'E', 'T',
+				5, 'h', 't', 't', 'p', 's',
+				11, 'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm',
+				11, '/', 'i', 'n', 'd', 'e', 'x', '.', 'h', 't', 'm', 'l',
+				// Indeterminate-Length Field Section (Headers)
+				10, 't', 'e', 's', 't', 'h', 'e', 'a', 'd', 'e', 'r',
+				3, 'f', 'o', 'o',
+				0, // terminator
+				// Indeterminate-Length Content
+				4, 'b', 'o', 'd', 'y',
+				0, // terminator
+				// Indeterminate-Length Field Section (Trailers)
+				0, // empty list of fields
+				// Padding
+				// empty
+			},
+		},
+		{
+			request: createFullRequestFromParts(http.MethodGet, "https://example.com/index.html", testHeaderMap, testTrailerMap, []byte("body")),
+			enc: []byte{
+				// Framing indicator
+				byte(unknownLengthRequestFrame),
+				// Request Control Data
+				3, 'G', 'E', 'T',
+				5, 'h', 't', 't', 'p', 's',
+				11, 'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm',
+				11, '/', 'i', 'n', 'd', 'e', 'x', '.', 'h', 't', 'm', 'l',
+				// Indeterminate-Length Field Section (Headers)
+				10, 't', 'e', 's', 't', 'h', 'e', 'a', 'd', 'e', 'r',
+				3, 'f', 'o', 'o',
+				0, // terminator
+				// Indeterminate-Length Content
+				4, 'b', 'o', 'd', 'y',
+				0, // terminator
+				// Indeterminate-Length Field Section (Trailers)
+				11, 't', 'e', 's', 't', 't', 'r', 'a', 'i', 'l', 'e', 'r',
+				3, 'b', 'a', 'r',
+				0, // terminator
+				// Padding
+				// empty
+			},
+		},
+		{
+			request: createFullRequestFromParts(http.MethodGet, "https://example.com/index.html", testHeaderMap, testTrailerMap, []byte("bodynotbody")),
+			enc: []byte{
+				// Framing indicator
+				byte(unknownLengthRequestFrame),
+				// Request Control Data
+				3, 'G', 'E', 'T',
+				5, 'h', 't', 't', 'p', 's',
+				11, 'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm',
+				11, '/', 'i', 'n', 'd', 'e', 'x', '.', 'h', 't', 'm', 'l',
+				// Indeterminate-Length Field Section (Headers)
+				10, 't', 'e', 's', 't', 'h', 'e', 'a', 'd', 'e', 'r',
+				3, 'f', 'o', 'o',
+				0, // terminator
+				// Indeterminate-Length Content
+				4, 'b', 'o', 'd', 'y',
+				7, 'n', 'o', 't', 'b', 'o', 'd', 'y',
+				0, // terminator
+				// Indeterminate-Length Field Section (Trailers)
+				11, 't', 'e', 's', 't', 't', 'r', 'a', 'i', 'l', 'e', 'r',
+				3, 'b', 'a', 'r',
+				0, // terminator
+				// Padding
+				// empty
+			},
+		},
 	}
 
 	for _, test := range tests {

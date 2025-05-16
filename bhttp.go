@@ -74,6 +74,64 @@ func readVarintSlice(b *bytes.Buffer) ([]byte, error) {
 	return value, nil
 }
 
+func readZeroDelimitedSlice(b *bytes.Buffer) ([]byte, error) {
+	data, err := b.ReadBytes(0)
+	if err != nil {
+		return nil, err
+	}
+
+	return data[:len(data)-1], nil
+}
+
+func readSlice(b *bytes.Buffer, indicator frameIndicator) ([]byte, error) {
+	switch indicator {
+	case knownLengthRequestFrame, knownLengthResponseFrame:
+		return readVarintSlice(b)
+	case unknownLengthRequestFrame, unknownLengthResponseFrame:
+		return readZeroDelimitedSlice(b)
+	default:
+		return nil, errUnsupportedMessageType
+	}
+}
+
+func readContent(b *bytes.Buffer, indicator frameIndicator) ([]byte, error) {
+	switch indicator {
+	case knownLengthRequestFrame, knownLengthResponseFrame:
+		return readVarintSlice(b)
+	case unknownLengthRequestFrame, unknownLengthResponseFrame:
+		slice, err := readZeroDelimitedSlice(b)
+		if err != nil {
+			return nil, err
+		}
+
+		return readContentChunks(bytes.NewBuffer(slice))
+	default:
+		return nil, errUnsupportedMessageType
+	}
+}
+
+func readContentChunks(b *bytes.Buffer) ([]byte, error) {
+	out := new(bytes.Buffer)
+
+	for {
+		if b.Len() == 0 {
+			break
+		}
+
+		chunk, err := readVarintSlice(b)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = out.Write(chunk)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return out.Bytes(), nil
+}
+
 //	Request with Known-Length {
 //		Framing Indicator (i) = 0,
 //		Request Control Data (..),
@@ -125,12 +183,9 @@ func UnmarshalBinaryRequest(data []byte) (*http.Request, error) {
 
 	// Filter based on the type of frame
 	switch indicator {
-	case knownLengthRequestFrame:
+	case knownLengthRequestFrame, unknownLengthRequestFrame:
 		break
-	case knownLengthResponseFrame:
-		return nil, errUnexpectedResponseFrame
-	case unknownLengthRequestFrame:
-	case unknownLengthResponseFrame:
+	case knownLengthResponseFrame, unknownLengthResponseFrame:
 		return nil, errUnexpectedResponseFrame
 	default:
 		return nil, errUnsupportedMessageType
@@ -168,7 +223,7 @@ func UnmarshalBinaryRequest(data []byte) (*http.Request, error) {
 
 	// Header fields
 	headerFields := new(fieldList)
-	encodedFieldData, err := readVarintSlice(b)
+	encodedFieldData, err := readSlice(b, indicator)
 	if err != nil {
 		return nil, err
 	}
@@ -199,13 +254,13 @@ func UnmarshalBinaryRequest(data []byte) (*http.Request, error) {
 
 	// Content and trailers
 	trailerFields := new(fieldList)
-	content, err := readVarintSlice(b)
+	content, err := readContent(b, indicator)
 	if err != nil {
 		return nil, err
 	}
 	if len(content) == 0 {
 		// Content was truncated, so the trailers MUST also be truncated
-		trailers, err := readVarintSlice(b)
+		trailers, err := readSlice(b, indicator)
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +269,7 @@ func UnmarshalBinaryRequest(data []byte) (*http.Request, error) {
 		}
 	} else {
 		// Content field was not truncated, so now check for trailers
-		encodedFieldData, err = readVarintSlice(b)
+		encodedFieldData, err = readSlice(b, indicator)
 		if err != nil {
 			return nil, err
 		}
