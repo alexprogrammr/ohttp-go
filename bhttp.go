@@ -254,13 +254,13 @@ func UnmarshalBinaryRequest(data []byte) (*http.Request, error) {
 	// Content and trailers
 	trailerFields := new(fieldList)
 	content, err := readContent(b, indicator)
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, err
 	}
 	if len(content) == 0 {
 		// Content was truncated, so the trailers MUST also be truncated
 		trailers, err := readSlice(b, indicator)
-		if err != nil {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, err
 		}
 		if len(trailers) != 0 {
