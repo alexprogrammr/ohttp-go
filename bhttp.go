@@ -27,6 +27,8 @@ const (
 var (
 	errProhibitedField           = errors.New("Prohibited field detected")
 	errInformationalNotSupported = errors.New("Informational messages not supported")
+	errUnexpectedResponseFrame   = errors.New("Expected binary HTTP request, not binary HTTP response")
+	errUnsupportedMessageType    = errors.New("Unsupported binary HTTP message type")
 )
 
 func isProhibitedField(fieldName string) bool {
@@ -126,11 +128,12 @@ func UnmarshalBinaryRequest(data []byte) (*http.Request, error) {
 	case knownLengthRequestFrame:
 		break
 	case knownLengthResponseFrame:
-		return nil, fmt.Errorf("Expected binary HTTP request, not binary HTTP response")
+		return nil, errUnexpectedResponseFrame
 	case unknownLengthRequestFrame:
 	case unknownLengthResponseFrame:
+		return nil, errUnexpectedResponseFrame
 	default:
-		return nil, fmt.Errorf("Unsupported binary HTTP message type")
+		return nil, errUnsupportedMessageType
 	}
 
 	// Control data
