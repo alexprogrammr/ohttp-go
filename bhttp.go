@@ -236,6 +236,9 @@ func UnmarshalBinaryRequest(data []byte) (*http.Request, error) {
 	for _, field := range headerFields.fields {
 		request.Header.Set(field.name, field.value)
 	}
+	if len(trailerFields.fields) > 0 {
+		request.Trailer = make(http.Header)
+	}
 	for _, field := range trailerFields.fields {
 		request.Trailer.Set(field.name, field.value)
 	}
