@@ -608,6 +608,32 @@ func TestRequestUnmarshal(t *testing.T) {
 				// empty
 			},
 		},
+		{
+			request: createFullRequestFromParts(http.MethodGet, "https://example.com/index.html", testHeaderMap, testTrailerMap, []byte("b\x00dyn\x00tb\x00dy")),
+			enc: []byte{
+				// Framing indicator
+				byte(unknownLengthRequestFrame),
+				// Request Control Data
+				3, 'G', 'E', 'T',
+				5, 'h', 't', 't', 'p', 's',
+				11, 'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm',
+				11, '/', 'i', 'n', 'd', 'e', 'x', '.', 'h', 't', 'm', 'l',
+				// Indeterminate-Length Field Section (Headers)
+				10, 't', 'e', 's', 't', 'h', 'e', 'a', 'd', 'e', 'r',
+				3, 'f', 'o', 'o',
+				0, // terminator
+				// Indeterminate-Length Content
+				4, 'b', 0, 'd', 'y',
+				7, 'n', 0, 't', 'b', 0, 'd', 'y',
+				0, // terminator
+				// Indeterminate-Length Field Section (Trailers)
+				11, 't', 'e', 's', 't', 't', 'r', 'a', 'i', 'l', 'e', 'r',
+				3, 'b', 'a', 'r',
+				0, // terminator
+				// Padding
+				// empty
+			},
+		},
 	}
 
 	for _, test := range tests {

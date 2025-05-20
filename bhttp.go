@@ -99,12 +99,7 @@ func readContent(b *bytes.Buffer, indicator frameIndicator) ([]byte, error) {
 	case knownLengthRequestFrame, knownLengthResponseFrame:
 		return readVarintSlice(b)
 	case unknownLengthRequestFrame, unknownLengthResponseFrame:
-		slice, err := readZeroDelimitedSlice(b)
-		if err != nil {
-			return nil, err
-		}
-
-		return readContentChunks(bytes.NewBuffer(slice))
+		return readContentChunks(b)
 	default:
 		return nil, errUnsupportedMessageType
 	}
@@ -121,6 +116,10 @@ func readContentChunks(b *bytes.Buffer) ([]byte, error) {
 		chunk, err := readVarintSlice(b)
 		if err != nil {
 			return nil, err
+		}
+
+		if len(chunk) == 0 {
+			break
 		}
 
 		_, err = out.Write(chunk)
@@ -270,7 +269,7 @@ func UnmarshalBinaryRequest(data []byte) (*http.Request, error) {
 	} else {
 		// Content field was not truncated, so now check for trailers
 		encodedFieldData, err = readSlice(b, indicator)
-		if err != nil {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, err
 		}
 		if len(encodedFieldData) > 0 {
